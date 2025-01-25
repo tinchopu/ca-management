@@ -7,12 +7,22 @@ interface CAInfo {
   created: string;
 }
 
+interface CertificateResult {
+  files: {
+    cert: string;
+    key: string;
+    p12: string;
+  };
+  p12Password: string;
+}
+
 export default function Home() {
   const [cas, setCAs] = useState<CAInfo[]>([]);
   const [selectedCA, setSelectedCA] = useState<string>('');
   const [newCAName, setNewCAName] = useState('');
   const [clientName, setClientName] = useState('');
   const [message, setMessage] = useState('');
+  const [certResult, setCertResult] = useState<CertificateResult | null>(null);
 
   useEffect(() => {
     const fetchCAs = async () => {
@@ -75,11 +85,52 @@ export default function Home() {
 
       if (!response.ok) throw new Error('Failed to create client certificate');
       const result = await response.json();
-      setMessage(`Client certificate created successfully. P12 file is available at: ${result.files.p12}`);
+      setCertResult(result);
+      setMessage('Client certificate created successfully');
       setClientName('');
     } catch (error) {
       console.error('Error creating client certificate:', error);
       setMessage('Error creating client certificate');
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      // Try the modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        setMessage('Copied to clipboard!');
+        return;
+      }
+
+      // Fallback to the older execCommand method
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      
+      // Avoid scrolling to bottom
+      textArea.style.top = '0';
+      textArea.style.left = '0';
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        document.execCommand('copy');
+        setMessage('Copied to clipboard!');
+      } catch (err) {
+        setMessage('Press Ctrl+C to copy');
+        // Keep the textarea selected for manual copying
+        setTimeout(() => textArea.remove(), 3000);
+        return;
+      }
+
+      textArea.remove();
+    } catch (err) {
+      console.error('Copy failed:', err);
+      setMessage('Press Ctrl+C to copy');
     }
   };
 
@@ -157,6 +208,39 @@ export default function Home() {
           </button>
         </form>
       </section>
+
+      {/* Certificate Result Section */}
+      {certResult && (
+        <section className="mb-8 p-6 bg-white rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">Certificate Details</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded">
+              <div className="flex-grow">
+                <p className="text-sm font-medium text-gray-700">P12 File Path</p>
+                <p className="text-sm text-gray-600 break-all select-all">{certResult.files.p12}</p>
+              </div>
+              <button
+                onClick={() => copyToClipboard(certResult.files.p12)}
+                className="ml-4 text-indigo-600 hover:text-indigo-800 whitespace-nowrap"
+              >
+                Copy Path
+              </button>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded">
+              <div className="flex-grow">
+                <p className="text-sm font-medium text-gray-700">P12 Password</p>
+                <p className="text-sm text-gray-600 font-mono break-all select-all">{certResult.p12Password}</p>
+              </div>
+              <button
+                onClick={() => copyToClipboard(certResult.p12Password)}
+                className="ml-4 text-indigo-600 hover:text-indigo-800 whitespace-nowrap"
+              >
+                Copy Password
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Message Display */}
       {message && (

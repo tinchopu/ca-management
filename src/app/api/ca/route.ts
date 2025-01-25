@@ -3,9 +3,14 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 const execAsync = promisify(exec);
 const CA_DIR = path.join(process.cwd(), 'certificates');
+
+function generateRandomPassword() {
+  return crypto.randomBytes(16).toString('hex');
+}
 
 async function initializeCADirectory() {
   try {
@@ -61,6 +66,7 @@ export async function POST(request: Request) {
     if (action === 'create-client-cert') {
       const caPath = path.join(CA_DIR, 'cas', caName);
       const clientPath = path.join(CA_DIR, 'clients', clientName);
+      const p12Password = generateRandomPassword();
       
       await fs.mkdir(clientPath, { recursive: true });
 
@@ -85,7 +91,7 @@ export async function POST(request: Request) {
         -inkey "${path.join(clientPath, 'client.key')}" \
         -in "${path.join(clientPath, 'client.crt')}" \
         -certfile "${path.join(caPath, 'ca.crt')}" \
-        -passout pass:changeit`
+        -passout pass:${p12Password}`
       );
 
       return NextResponse.json({
@@ -95,6 +101,7 @@ export async function POST(request: Request) {
           key: path.join(clientPath, 'client.key'),
           p12: path.join(clientPath, 'client.p12'),
         },
+        p12Password,
       });
     }
 
