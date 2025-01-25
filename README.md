@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Certificate Authority (CA) Management System
 
-## Getting Started
+This project provides a web-based interface for managing Certificate Authorities (CAs) and generating client certificates. It's built with Next.js and provides REST APIs for CA operations.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Create and manage Certificate Authorities (CAs)
+- Generate client certificates signed by your CAs
+- Export certificates in various formats (CRT, KEY, P12)
+- Secure password generation for P12 keystores
+
+## Prerequisites
+
+- Node.js (Latest LTS version recommended)
+- OpenSSL installed on your system
+
+## Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+## API Endpoints
+
+### List CAs
+```
+GET /api/ca
+```
+Returns a list of all Certificate Authorities.
+
+### Create a new CA
+```
+POST /api/ca
+{
+    "action": "create-ca",
+    "name": "your-ca-name"
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Create a Client Certificate
+```
+POST /api/ca
+{
+    "action": "create-client-cert",
+    "caName": "existing-ca-name",
+    "clientName": "client-name"
+}
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Integrating Existing CAs
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To integrate an existing CA into the system:
 
-## Learn More
+1. Create a directory with your CA name under `certificates/cas/`
+2. Place your existing CA files in this directory:
+   - `ca.key` - Your CA private key
+   - `ca.crt` - Your CA certificate
 
-To learn more about Next.js, take a look at the following resources:
+Example structure:
+```
+certificates/
+├── cas/
+│   └── your-ca-name/
+│       ├── ca.key
+│       └── ca.crt
+└── clients/
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The system will automatically detect and use your existing CA for signing new client certificates.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Security Considerations
 
-## Deploy on Vercel
+- CA private keys are stored on the filesystem. Ensure proper file permissions
+- P12 passwords are randomly generated for each client certificate
+- All cryptographic operations use industry-standard OpenSSL commands
+- Default key sizes: CA (4096 bits), Client certificates (2048 bits)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Certificate Details
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- CA certificates are valid for 10 years (3650 days)
+- Client certificates are valid for 1 year (365 days)
+- SHA-256 is used for signing
+- Certificates use the Common Name (CN) format for identification
