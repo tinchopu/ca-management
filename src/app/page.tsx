@@ -1,101 +1,169 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface CAInfo {
+  name: string;
+  created: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [cas, setCAs] = useState<CAInfo[]>([]);
+  const [selectedCA, setSelectedCA] = useState<string>('');
+  const [newCAName, setNewCAName] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [message, setMessage] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  useEffect(() => {
+    const fetchCAs = async () => {
+      try {
+        const response = await fetch('/api/ca');
+        if (!response.ok) throw new Error('Failed to fetch CAs');
+        const data = await response.json();
+        setCAs(data);
+      } catch (error) {
+        console.error('Error fetching CAs:', error);
+        setMessage('Error loading CAs');
+      }
+    };
+    fetchCAs();
+  }, []);
+
+  const handleCreateCA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/ca', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create-ca',
+          name: newCAName,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create CA');
+      const newCA = await response.json();
+      setCAs([...cas, newCA]);
+      setNewCAName('');
+      setMessage('CA created successfully');
+    } catch (error) {
+      console.error('Error creating CA:', error);
+      setMessage('Error creating CA');
+    }
+  };
+
+  const handleCreateClientCert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCA) {
+      setMessage('Please select a CA first');
+      return;
+    }
+    try {
+      const response = await fetch('/api/ca', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create-client-cert',
+          caName: selectedCA,
+          clientName: clientName,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create client certificate');
+      const result = await response.json();
+      setMessage(`Client certificate created successfully. P12 file is available at: ${result.files.p12}`);
+      setClientName('');
+    } catch (error) {
+      console.error('Error creating client certificate:', error);
+      setMessage('Error creating client certificate');
+    }
+  };
+
+  return (
+    <main className="min-h-screen p-8">
+      <h1 className="text-3xl font-bold mb-8">Certificate Authority Management</h1>
+      
+      {/* Create CA Section */}
+      <section className="mb-8 p-6 bg-white rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">Create New CA</h2>
+        <form onSubmit={handleCreateCA} className="space-y-4">
+          <div>
+            <label htmlFor="caName" className="block text-sm font-medium text-gray-700">
+              CA Name
+            </label>
+            <input
+              type="text"
+              id="caName"
+              value={newCAName}
+              onChange={(e) => setNewCAName(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              required
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+          <button
+            type="submit"
+            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
           >
-            Read our docs
-          </a>
+            Create CA
+          </button>
+        </form>
+      </section>
+
+      {/* Create Client Certificate Section */}
+      <section className="mb-8 p-6 bg-white rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">Issue Client Certificate</h2>
+        <form onSubmit={handleCreateClientCert} className="space-y-4">
+          <div>
+            <label htmlFor="caSelect" className="block text-sm font-medium text-gray-700">
+              Select CA
+            </label>
+            <select
+              id="caSelect"
+              value={selectedCA}
+              onChange={(e) => setSelectedCA(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              required
+            >
+              <option value="">Select a CA</option>
+              {cas.map((ca) => (
+                <option key={ca.name} value={ca.name}>
+                  {ca.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">
+              Client Name
+            </label>
+            <input
+              type="text"
+              id="clientName"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            Create Client Certificate
+          </button>
+        </form>
+      </section>
+
+      {/* Message Display */}
+      {message && (
+        <div className="p-4 rounded bg-blue-100 text-blue-900">
+          {message}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      )}
+    </main>
   );
 }
