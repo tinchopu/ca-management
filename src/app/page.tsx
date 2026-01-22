@@ -120,7 +120,7 @@ export default function Home() {
       try {
         document.execCommand('copy');
         setMessage('Copied to clipboard!');
-      } catch (err) {
+      } catch {
         setMessage('Press Ctrl+C to copy');
         // Keep the textarea selected for manual copying
         setTimeout(() => textArea.remove(), 3000);

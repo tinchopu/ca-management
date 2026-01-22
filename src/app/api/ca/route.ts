@@ -37,7 +37,7 @@ export async function GET() {
       }));
 
     return NextResponse.json(cas);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to list CAs' }, { status: 500 });
   }
 }
