@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       
       await fs.mkdir(clientPath, { recursive: true });
 
-      await execAsync(`openssl genrsa -out "${path.join(clientPath, 'client.key')}" 2048`);
+      await execAsync(`openssl genrsa -out "${path.join(clientPath, 'client.key')}" 4096`);
       await execAsync(
         `openssl req -new -key "${path.join(clientPath, 'client.key')}" \
         -out "${path.join(clientPath, 'client.csr')}" \
@@ -90,7 +90,6 @@ export async function POST(request: Request) {
         `openssl pkcs12 -export -out "${path.join(clientPath, 'client.p12')}" \
         -inkey "${path.join(clientPath, 'client.key')}" \
         -in "${path.join(clientPath, 'client.crt')}" \
-        -certfile "${path.join(caPath, 'ca.crt')}" \
         -passout pass:${p12Password}`
       );
 
